@@ -96,7 +96,11 @@ class SynthesizeResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize LLM engine (expensive, done once)
+    # Startup: Initialize models (expensive, done once)
+    print("Initializing SentenceTransformer...")
+    app.state.sentence_model = SentenceTransformer('all-mpnet-base-v2')
+    print("SentenceTransformer initialized successfully")
+
     print(f"Initializing MLCEngine with model: {MODEL_ID}")
     app.state.llm_engine = MLCEngine(MODEL_ID, device="cpu")
     app.state.model_id = MODEL_ID
@@ -128,8 +132,7 @@ async def group_sentences(request: GroupSentencesRequest):
     Group sentences by semantic similarity.
     """
     sentences = request.sentences
-    model = SentenceTransformer('all-mpnet-base-v2')
-    embeddings = model.encode(request.sentences)
+    embeddings = app.state.sentence_model.encode(sentences)
     clustering = AgglomerativeClustering(n_clusters=None, distance_threshold=0.75, metric='cosine', linkage='average')
     labels = clustering.fit_predict(embeddings)
     
