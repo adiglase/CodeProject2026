@@ -3,6 +3,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import AgglomerativeClustering
+from mlc_llm import MLCEngine
+
+
+MODEL_ID = "HF://mlc-ai/Qwen3-0.6B-q4f16_1-MLC"
 
 
 # ============== Request/Response Models ==============
@@ -92,11 +96,18 @@ class SynthesizeResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize LLM engine here
-    # TODO: Initialize MLC LLM engine
+    # Startup: Initialize LLM engine (expensive, done once)
+    print(f"Initializing MLCEngine with model: {MODEL_ID}")
+    app.state.llm_engine = MLCEngine(MODEL_ID, device="cpu")
+    app.state.model_id = MODEL_ID
+    print("MLCEngine initialized successfully")
+
     yield
-    # Shutdown: Cleanup LLM engine here
-    # TODO: Terminate MLC LLM engine
+
+    # Shutdown: Cleanup LLM engine
+    print("Terminating MLCEngine...")
+    app.state.llm_engine.terminate()
+    print("MLCEngine terminated")
 
 
 # ============== FastAPI App ==============
@@ -134,5 +145,30 @@ async def synthesize(request: SynthesizeRequest):
     """
     Synthesize multiple sentences into a coherent paragraph.
     """
-    # TODO: Implement synthesis logic using MLC LLM
-    pass
+    sentences = request.sentences
+    engine: MLCEngine = app.state.llm_engine
+
+    sentences_text = " ".join(sentences)
+    
+    prompt = f"""Rewrite this into a single flowing paragraph that sounds natural and engaging:
+
+    {sentences_text}
+
+    Rewritten paragraph:"""
+
+    response = engine.chat.completions.create(
+        messages=[
+            {"role": "system", "content": "You are a skilled writer. Rewrite text to sound natural and engaging. Output only the rewritten text."},
+            {"role": "user", "content": prompt},
+        ],
+        model=app.state.model_id,
+        stream=False,
+    )
+
+    paragraph = response.choices[0].message.content.strip()
+    
+    # Clean up any thinking tags (safety net)
+    if "</think>" in paragraph:
+        paragraph = paragraph.split("</think>")[-1].strip()
+    
+    return SynthesizeResponse(paragraph=paragraph)
