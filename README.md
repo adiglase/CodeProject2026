@@ -233,7 +233,15 @@ This problem actually similar with how the semantic search work. To find a simil
 
 After doing some research, I found out that we can use sentence transformer. Basically we convert each sentence into a single embeddings, and then we compare them with other text and group them if they are closely related with each other.
 
-We can use several pretrained model for this. First I try using all-MiniLM-L6-v2 , but seems like it always fail to return the expected response. After checking the dendograms (you can find it inside experiments/dendograms/ folder) the model clearly failed to group the cat and feline. After switch to a better model (all-mpnet-base-v2), the dendogram showed that the model know well that cat and feline is a similar thing. After doing several iterations to find the best threshold, the endpoint managed to return the expected response.
+We can use several pretrained model for this. First I try using all-MiniLM-L6-v2, but seems like it always fail to return the expected response. After checking the dendrogram, the model clearly failed to group the cat and feline.
+
+![all-MiniLM-L6-v2 dendrogram](experiments/dendrograms/all-MiniLM-L6-v2_t0.73.png)
+
+After switch to a better model (all-mpnet-base-v2), the dendrogram showed that the model know well that cat and feline is a similar thing.
+
+![all-mpnet-base-v2 dendrogram](experiments/dendrograms/all-mpnet-base-v2_t0.75.png)
+
+After doing several iterations to find the best threshold, the endpoint managed to return the expected response.
 
 #### Endpoint 2: Paragraph Synthesis
 
