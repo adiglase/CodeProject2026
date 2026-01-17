@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
+from sentence_transformers import SentenceTransformer
+from sklearn.cluster import AgglomerativeClustering
 
 
 # ============== Request/Response Models ==============
@@ -14,6 +16,9 @@ class GroupSentencesRequest(BaseModel):
                     "The cat sat on the mat",
                     "Dogs love to play fetch",
                     "My feline friend enjoys napping",
+                    "The puppy ran across the yard",
+                    "Machine learning is fascinating",
+                    "AI models can process text"
                 ]
             }
         },
@@ -111,8 +116,17 @@ async def group_sentences(request: GroupSentencesRequest):
     """
     Group sentences by semantic similarity.
     """
-    # TODO: Implement semantic grouping logic
-    pass
+    sentences = request.sentences
+    model = SentenceTransformer('all-mpnet-base-v2')
+    embeddings = model.encode(request.sentences)
+    clustering = AgglomerativeClustering(n_clusters=None, distance_threshold=0.75, metric='cosine', linkage='average')
+    labels = clustering.fit_predict(embeddings)
+    
+    groups = {}
+    for sentence, label in zip(sentences, labels):
+        groups.setdefault(label, []).append(sentence)
+    
+    return GroupSentencesResponse(groups=list(groups.values()))                                            
 
 
 @app.post("/synthesize", response_model=SynthesizeResponse)

@@ -23,7 +23,7 @@ def main():
     print()
 
     # Initialize the engine
-    engine = MLCEngine(model)
+    engine = MLCEngine(model, device="cpu")
 
     try:
         # Example 1: Simple chat completion (non-streaming)
