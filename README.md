@@ -178,20 +178,81 @@ Or run the provided setup script for guidance:
 **Please fill out this section before submitting:**
 
 ### How to Run
-<!-- Your instructions for running the solution -->
 
+**1. Create and activate conda environment**
+```bash
+conda create -n semantic-api python=3.11
+conda activate semantic-api
+```
 
+**2. Install MLC LLM (choose based on your hardware)**
+
+GPU (NVIDIA CUDA):
+```bash
+pip install --pre -U -f https://mlc.ai/wheels mlc-llm-nightly mlc-ai-nightly
+```
+
+CPU only:
+```bash
+pip install --pre -U -f https://mlc.ai/wheels mlc-llm-nightly-cpu mlc-ai-nightly-cpu
+```
+
+macOS Apple Silicon:
+```bash
+pip install --pre -U -f https://mlc.ai/wheels mlc-llm-nightly mlc-ai-nightly
+```
+
+**3. Install git-lfs (required for model downloads)**
+- Ubuntu: `sudo apt install git-lfs`
+- macOS: `brew install git-lfs`
+
+```bash
+git lfs install
+```
+
+**4. Install project dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+**5. Run the API server**
+```bash
+fastapi dev app.py
+```
+
+The API will be available at http://127.0.0.1:8000. Interactive docs at http://127.0.0.1:8000/docs.
+
+---
 ### Approach
-<!-- Your design decisions and how you solved the semantic grouping problem -->
 
+#### Endpoint 1: Semantic Grouping
+
+My first intuition is just using the llm with structured output. But this is not working well because the model is too small so it does not following the instruction properly. And I am also not sure whether the mlc-llm support structured output as I can't find it in the docs. So I guess this is not the best solution.
+
+This problem actually similar with how the semantic search work. To find a similarity between text, we can just compare their embeddings. So how if we use similar approach, I compare the sentence based on their embeddings and see if they are related.
+
+After doing some research, I found out that we can use sentence transformer. Basically we convert each sentence into a single embeddings, and then we compare them with other text and group them if they are closely related with each other.
+
+We can use several pretrained model for this. First I try using all-MiniLM-L6-v2 , but seems like it always fail to return the expected response. After checking the dendograms (you can find it inside experiments/dendograms/ folder) the model clearly failed to group the cat and feline. After switch to a better model (all-mpnet-base-v2), the dendogram showed that the model know well that cat and feline is a similar thing. After doing several iterations to find the best threshold, the endpoint managed to return the expected response.
+
+#### Endpoint 2: Paragraph Synthesis
+
+My first approach is to write a detailed rules and several examples. But I found out the model seems like take the example as a constraints. If I have example using most of past tenses, the returned response also mostly will be in past tenses.
+
+So I decide to remove the example and make the prompt much more simpler. I still haven't found a perfect prompt for it, because of the time limitations.
+
+The model sometimes keep adding the <thinking> section in the returned response. So I add some additional cleanup before returning the response.
 
 ### Tradeoffs/Limitations
-<!-- What you'd improve with more time -->
+- The distance_threshold=0.75 is hardcoded. Different types of sentences may need different thresholds for optimal grouping.
+- Qwen3-0.6B has limited instruction-following capability, which is why I needed the </think> tag cleanup hack.
+- My laptop does not have external GPU, results in really slow inference times.
+- No proper error handling.
 
 
 ### Time Spent
-<!-- Be honest! We value integrity over speed -->
+2 hours 45 minutes. Slow model inference take so much time.
 
 
 ### AI Assistant Usage
-<!-- Did you use Claude, Copilot, ChatGPT, etc.? It's allowed, just disclose it -->
+I use Claude Code with Opus 4.5 for brainstorming, project scaffolding, fix error, writing the pydantic types and doing the clustering experiments to find a perfect model and treshold value.
