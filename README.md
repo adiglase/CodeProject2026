@@ -217,7 +217,7 @@ pip install -r requirements.txt
 
 **5. Run the API server**
 ```bash
-fastapi dev app.py
+fastapi run app.py
 ```
 
 The API will be available at http://127.0.0.1:8000. Interactive docs at http://127.0.0.1:8000/docs.
